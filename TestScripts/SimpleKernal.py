@@ -7,9 +7,12 @@ import pycuda.autoinit
 from pycuda import gpuarray
 import pycuda.driver as drv
 from time import time
-from pycuda.elementwise import ElementwiseKernel
 from pycuda.compiler import SourceModule
 
+
+# C Code to run on GPU
+# computing thread id by using block data 
+# using only X ---> one dimensional
 kernal_code = SourceModule("""
 __global__ void double_kernal(float* in,float* out)
     {
@@ -18,12 +21,8 @@ __global__ void double_kernal(float* in,float* out)
     }
 """)
 
+# getting function symbols
 kernal = kernal_code.get_function("double_kernal")
-
-
-
-import cProfile
-import pstats
 
 # some function to compute speed
 def speedcomparison():
@@ -34,13 +33,18 @@ def speedcomparison():
     host_data_2x = host_data * np.float32(2)
     t2 = time()
     print('total time to compute on CPU:', t2-t1)
+    # copying from CPU to GPU
     device_data = gpuarray.to_gpu(host_data)
     # allocate memory for output
     device_data_2x = gpuarray.empty_like(device_data)
+    # number of threads in each block
     block_size = 256
+    # number of blocks required
     grid_size = (n + block_size -1) // block_size 
     t1 = time()
-    kernal(device_data,device_data_2x, block=(block_size,1,1),grid=(grid_size,1))
+    # Run PyCUDA kernel code here
+    # Using grids and blocks to be one dimensional
+    kernal(device_data,device_data_2x, block=(block_size,1,1),grid=(grid_size,1,1))
     t2 = time()
     from_device = device_data_2x.get()
     print('total time to compute on GPU:', t2-t1)
@@ -48,5 +52,5 @@ def speedcomparison():
 
 
 
-# Run PyCUDA kernel code here
+# Calling Costly function
 speedcomparison()
